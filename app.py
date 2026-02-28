@@ -46,7 +46,7 @@ with tab1:
         angulo_critico = None
         angle_R_deg = None
         
-        # Intensidades aproximadas (Fresnel) apenas com r_s para visualização
+        # Intensidades aproximadas (Fresnel) para reflexão e refração dinâmicas
         if sin_R >= 1:
             reflexao_total = True
             angulo_critico = np.degrees(np.arcsin(n2 / n1))
@@ -58,14 +58,35 @@ with tab1:
             if n1 > n2:
                 angulo_critico = np.degrees(np.arcsin(n2 / n1))
                 
-            # Coeficientes Fresnel (aproximação s-polarized)
-            num = n1 * np.cos(angle_i_rad) - n2 * np.cos(angle_R_rad)
-            den = n1 * np.cos(angle_i_rad) + n2 * np.cos(angle_R_rad)
-            R_intensity = abs(num / den)**2
+            # Coeficientes Fresnel (aproximação mediação s-polarized e p-polarized para opacidade geral visual)
+            rs = (n1 * np.cos(angle_i_rad) - n2 * np.cos(angle_R_rad)) / (n1 * np.cos(angle_i_rad) + n2 * np.cos(angle_R_rad))
+            rp = (n1 * np.cos(angle_R_rad) - n2 * np.cos(angle_i_rad)) / (n1 * np.cos(angle_R_rad) + n2 * np.cos(angle_i_rad))
             
-            # Garantir uma visibilidade minima
-            R_intensity = max(0.15, R_intensity) 
-            T_intensity = 1.0 - R_intensity
+            # Intensidade refletida (Reflectance) = média
+            R = (abs(rs)**2 + abs(rp)**2) / 2
+            
+            # Ajuste visual exagerado para a interface dependente da critica (se existir):
+            # Muito próximo do angulo critico o raio T_intensity cai a pique
+            if angulo_critico is not None:
+              # Tornar a reflexão dependente da aproximação ao critico para um efeito dinâmico vistoso
+              approach_to_critical = min(1.0, angle_i_deg / angulo_critico)
+              R_intensity = approach_to_critical ** 3  # Crescimento exponencial para o final
+              R_intensity = max(R, R_intensity)  # O que for maior salva para garantir reflexão normal também 
+            else:
+              R_intensity = R
+              
+            T_intensity = 1.0 - R_intensity 
+            
+            # Se a intensidade for inferior a 4%, corta a opacidade totalmente para não desenhar
+            if R_intensity < 0.04:
+                R_intensity = 0.0
+            if T_intensity < 0.04:
+                T_intensity = 0.0
+                
+            # Um pequeno truque visual, se a transmissão estiver quase nula (perto d ângulo crítico limite), desligar
+            if reflexao_total or (angulo_critico is not None and angle_i_deg >= angulo_critico * 0.98):
+               T_intensity = 0.0
+               R_intensity = 1.0
                 
         # Exibição de resultados na interface
         st.write("---")
