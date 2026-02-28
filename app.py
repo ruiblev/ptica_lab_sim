@@ -343,7 +343,8 @@ with tab2:
         st.write("---")
         st.subheader("Padrão de Intensidade no Alvo")
         if sin_theta <= 1:
-            fig2, ax2 = plt.subplots(figsize=(8, 4))
+            # Aumentar a largura da figura para dar mais margem à escala
+            fig2, ax2 = plt.subplots(figsize=(10, 3.5))
             
             # Ponto central intenso
             ax2.plot(0, 0, 'ro', markersize=12, label="Máximo Central", alpha=0.9)
@@ -362,8 +363,9 @@ with tab2:
                 ax2.plot(-dist_X2_cm, 0, 'ro', markersize=5, alpha=0.5)
 
             # Restaurar os limites perdidos e forçar as quadrículas a serem matematicamente quadradas
-            ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
-            ax2.set_ylim(-1.5, 1.5)
+            ax2.set_xlim(-min(30, dist_X_cm*2.5), min(30, dist_X_cm*2.5))
+            # Dar mais altura (Y) para que com aspect='equal' o gráfico não pareça um retângulo tão esmagado
+            ax2.set_ylim(-4, 4)
             ax2.set_aspect('equal')
             
             # Formatar eixo interativo como papel milimétrico (quadriculado)
@@ -395,13 +397,14 @@ with tab2:
             ax2.set_title("Padrão de Difração no Alvo (Papel Milimétrico)")
             
             # Adicionar nota explicativa da escala do papel milimétrico 
-            # Colocar o texto no canto superior direito do eixo
-            ax2.text(0.99, 0.95, 'Cada quadrícula menor: $1\,mm \\times 1\,mm$',
-                     transform=ax2.transAxes, ha='right', va='top',
+            # Colocar o texto fora da zona dos pontos para evitar a colisão visual
+            ax2.text(0.01, 0.95, 'Cada quadrícula menor: $1\,mm \\times 1\,mm$',
+                     transform=ax2.transAxes, ha='left', va='top',
                      fontsize=10, color='darkred', weight='bold',
                      bbox=dict(facecolor='white', alpha=0.9, edgecolor='gray', boxstyle='round,pad=0.3'))
             
-            ax2.legend(loc='lower left')
+            # Legenda normal do lado direito
+            ax2.legend(loc='upper right')
             
             # Mudar a cor dos pontos consoante o lambda aproximado
             for collection in ax2.collections:
