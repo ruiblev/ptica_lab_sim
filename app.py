@@ -90,18 +90,16 @@ with tab1:
                 
         # Exibição de resultados na interface
         st.write("---")
-        st.subheader("Medições Experimentais")
+        st.subheader("Medições Experimentais do Ângulo Crítico ($\\theta_c$)")
         
-        # Inputs para os alunos preencherem
+        # Inputs para os alunos preencherem o ângulo limite
+        st.write("Determine experimentalmente o **ângulo crítico** (ou ângulo limite) para este par de meios. Este é o menor ângulo de incidência para o qual ocorre a reflexão total da luz (o raio refratado deixa de emergir no segundo meio).")
+        
         col_med_1, col_med_2 = st.columns(2)
         with col_med_1:
-            st.markdown("**Registo da Reflexão ($a_r$)**")
-            med_refletido = st.number_input("Valor lido (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.5, key="ref_val")
-            inc_refletido = st.number_input("Incerteza (± graus)", min_value=0.0, max_value=5.0, value=0.5, step=0.1, key="ref_inc")
+            med_critico = st.number_input("Valor lido no transferidor (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.5, key="crit_val")
         with col_med_2:
-            st.markdown("**Registo da Refração ($a_R$)**")
-            med_refratado = st.number_input("Valor lido (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.5, key="refr_val")
-            inc_refratado = st.number_input("Incerteza (± graus)", min_value=0.0, max_value=5.0, value=0.5, step=0.1, key="refr_inc")
+            inc_critico = st.number_input("Incerteza do transferidor (± graus)", min_value=0.0, max_value=5.0, value=0.5, step=0.1, key="crit_inc", help="Metade da menor divisão da escala")
         
         verificar = st.button("Verificar Resultados Teóricos")
         
@@ -109,29 +107,17 @@ with tab1:
             st.write("---")
             st.subheader("Resultados Teóricos e Avaliação")
             
-            # Avaliação Reflexão
-            st.write(f"**Ângulo de reflexão teórico:** {angle_refletido_deg:.2f}°")
-            if abs(med_refletido - angle_refletido_deg) <= inc_refletido:
-                st.success("✅ O valor medido para a reflexão é consistente com a lei da Reflexão!")
+            if angulo_critico is None:
+                 st.warning("⚠️ **Nota:** Com os meios selecionados ($n_1 < n_2$), não é possível observar o fenómeno de reflexão total, logo não existe ângulo crítico!")
+                 if med_critico > 0:
+                     st.error("❌ Inseriu um valor de um ângulo crítico para uma montagem experimental onde tal fenómeno é fisicamente impossível.")
             else:
-                st.error("❌ O valor medido para a reflexão apresenta desvios em relação à lei da Reflexão.")
-            
-            if reflexao_total:
-                st.warning(f"⚠️ **Reflexão Total!** Não há refração para o meio 2.")
-                st.write(f"**Ângulo limite (crítico) teórico:** {angulo_critico:.2f}°")
-                if med_refratado > 0:
-                   st.error("❌ Registou medições de refração quando este fenómeno não ocorre nestas condições.")
-            else:
-                # Avaliação Refração
-                st.write(f"**Ângulo de refração teórico:** {angle_R_deg:.2f}°")
-                if abs(med_refratado - angle_R_deg) <= inc_refratado:
-                    st.success("✅ O valor medido para a refração é consistente com a lei de Snell-Descartes!")
-                else:
-                    st.error("❌ O valor medido para a refração apresenta desvios em relação à lei de Snell-Descartes.")
-                    
-                if angulo_critico:
-                    st.info(f"**Ângulo limite (crítico) para a transição atual:** {angulo_critico:.2f}°")
-                
+                 st.write(f"**Ângulo crítico teórico ($\\theta_c$):** {angulo_critico:.2f}°")
+                 if abs(med_critico - angulo_critico) <= inc_critico:
+                     st.success("✅ O valor medido é consistente com as Leis de Snell-Descartes!")
+                 else:
+                     st.error("❌ O valor medido apresenta um desvio superior à incerteza em relação ao valor teórico.")
+                 
     with col2:
         # Gráfico interativo
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -148,23 +134,37 @@ with tab1:
         circle = plt.Circle((0, 0), protractor_radius, color='gray', fill=False, linestyle='--', alpha=0.5)
         ax.add_patch(circle)
         
-        # Marcas do transferidor (de 10 em 10 graus)
-        for angle in range(0, 360, 10):
+        # Marcas do transferidor (de 1 em 1 graus)
+        for angle in range(0, 360, 1):
             rad = np.radians(angle)
-            x_start = protractor_radius * 0.95 * np.cos(rad)
-            y_start = protractor_radius * 0.95 * np.sin(rad)
+            
+            # Ajustar profundidade do traço consoante a divisão (10, 5, 1)
+            if angle % 10 == 0:
+                inner_r = 0.92
+                alpha_line = 0.4
+                lw = 1.2
+            elif angle % 5 == 0:
+                inner_r = 0.95
+                alpha_line = 0.3
+                lw = 0.8
+            else:
+                inner_r = 0.97
+                alpha_line = 0.15
+                lw = 0.5
+                
+            x_start = protractor_radius * inner_r * np.cos(rad)
+            y_start = protractor_radius * inner_r * np.sin(rad)
             x_end = protractor_radius * np.cos(rad)
             y_end = protractor_radius * np.sin(rad)
-            ax.plot([x_start, x_end], [y_start, y_end], color='black', alpha=0.3, linewidth=1)
+            ax.plot([x_start, x_end], [y_start, y_end], color='black', alpha=alpha_line, linewidth=lw)
             
-            # Textos a cada 30 graus
-            if angle % 30 == 0:
+            # Textos a cada 10 graus (apenas)
+            if angle % 10 == 0:
                 # Ajustar ângulo para mostrar em torno da normal
                 display_angle = abs((angle % 180) - 90)
-                if y_end >= 0:
-                    ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=8, alpha=0.5)
-                else:
-                    ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=8, alpha=0.5)
+                # Não escrever o '0' duas vezes e afastar o texto
+                if display_angle >= 0:
+                   ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=6, alpha=0.6)
 
         # Distância máxima de desenho do raio para que saiam do transferidor (1.2 -> 1.8)
         ray_length = 1.8
