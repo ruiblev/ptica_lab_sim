@@ -363,11 +363,32 @@ with tab2:
 
             ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
             ax2.set_ylim(-1, 1)
-            ax2.set_xlabel("Distância X no alvo (cm)")
-            ax2.set_yticks([])
-            ax2.set_title("Padrão de Difração no Alvo")
+            
+            # Formatar eixo interativo como papel milimétrico (quadriculado)
+            from matplotlib.ticker import MultipleLocator
+            
+            # Eixo X: marcas maiores de 1 em 1 cm, marcas menores de 0.1 em 0.1 cm (1 mm)
+            ax2.xaxis.set_major_locator(MultipleLocator(1))
+            ax2.xaxis.set_minor_locator(MultipleLocator(0.1))
+            
+            # Eixo Y: (Opcional, apenas para criar a malha quadrada do papel perfeitamente)
+            ax2.yaxis.set_major_locator(MultipleLocator(1))
+            ax2.yaxis.set_minor_locator(MultipleLocator(0.1))
+            
+            # Desenhar as linhas da grelha à semelhança do papel milimétrico clássico
+            ax2.grid(True, which='major', color='black', linestyle='-', linewidth=0.6, alpha=0.3)
+            ax2.grid(True, which='minor', color='gray', linestyle='-', linewidth=0.3, alpha=0.2)
+            
+            # Remover o eixo y visível (esconder as labels y para ter apenas o aspeto do papel)
+            ax2.set_yticklabels([])
+            
+            # Remover as bordas fortes ('spines') do gráfico para parecer uma folha
+            for spine in ax2.spines.values():
+                spine.set_visible(False)
+            
+            ax2.set_xlabel("Distância $X$ no alvo (Escala em cm, subdivisões em mm)")
+            ax2.set_title("Padrão de Difração no Alvo (Papel Milimétrico)")
             ax2.legend()
-            ax2.grid(True, axis='x', linestyle='--')
             
             # Mudar a cor dos pontos consoante o lambda aproximado
             for collection in ax2.collections:
