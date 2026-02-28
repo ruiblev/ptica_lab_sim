@@ -57,16 +57,47 @@ with tab1:
                 
         # Exibição de resultados na interface
         st.write("---")
-        st.subheader("Resultados")
-        st.write(f"**Ângulo de reflexão ($\\alpha_r$):** {angle_refletido_deg:.2f}° (Intensidade visual: {R_intensity*100:.0f}%)")
+        st.subheader("Medições Experimentais")
         
-        if reflexao_total:
-            st.error(f"⚠️ **Reflexão Total!** Não há refração para o meio 2.")
-            st.write(f"**Ângulo limite (crítico):** {angulo_critico:.2f}°")
-        else:
-            st.success(f"**Ângulo de refração ($\\alpha_R$):** {angle_R_deg:.2f}° (Intensidade visual: {T_intensity*100:.0f}%)")
-            if angulo_critico:
-                st.info(f"**Ângulo limite (crítico) para a transição atual:** {angulo_critico:.2f}°")
+        # Inputs para os alunos preencherem
+        col_med_1, col_med_2 = st.columns(2)
+        with col_med_1:
+            st.markdown("**Registo da Reflexão ($a_r$)**")
+            med_refletido = st.number_input("Valor lido (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.5, key="ref_val")
+            inc_refletido = st.number_input("Incerteza (± graus)", min_value=0.0, max_value=5.0, value=0.5, step=0.1, key="ref_inc")
+        with col_med_2:
+            st.markdown("**Registo da Refração ($a_R$)**")
+            med_refratado = st.number_input("Valor lido (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.5, key="refr_val")
+            inc_refratado = st.number_input("Incerteza (± graus)", min_value=0.0, max_value=5.0, value=0.5, step=0.1, key="refr_inc")
+        
+        verificar = st.button("Verificar Resultados Teóricos")
+        
+        if verificar:
+            st.write("---")
+            st.subheader("Resultados Teóricos e Avaliação")
+            
+            # Avaliação Reflexão
+            st.write(f"**Ângulo de reflexão teórico:** {angle_refletido_deg:.2f}°")
+            if abs(med_refletido - angle_refletido_deg) <= inc_refletido:
+                st.success("✅ O valor medido para a reflexão é consistente com a lei da Reflexão!")
+            else:
+                st.error("❌ O valor medido para a reflexão apresenta desvios em relação à lei da Reflexão.")
+            
+            if reflexao_total:
+                st.warning(f"⚠️ **Reflexão Total!** Não há refração para o meio 2.")
+                st.write(f"**Ângulo limite (crítico) teórico:** {angulo_critico:.2f}°")
+                if med_refratado > 0:
+                   st.error("❌ Registou medições de refração quando este fenómeno não ocorre nestas condições.")
+            else:
+                # Avaliação Refração
+                st.write(f"**Ângulo de refração teórico:** {angle_R_deg:.2f}°")
+                if abs(med_refratado - angle_R_deg) <= inc_refratado:
+                    st.success("✅ O valor medido para a refração é consistente com a lei de Snell-Descartes!")
+                else:
+                    st.error("❌ O valor medido para a refração apresenta desvios em relação à lei de Snell-Descartes.")
+                    
+                if angulo_critico:
+                    st.info(f"**Ângulo limite (crítico) para a transição atual:** {angulo_critico:.2f}°")
                 
     with col2:
         # Gráfico interativo
@@ -76,8 +107,8 @@ with tab1:
         ax.axhline(0, color='gray', linewidth=2, linestyle='--')
         ax.axvline(0, color='black', linewidth=1, linestyle=':') # Normal
         
-        ax.fill_between([-1.5, 1.5], 0, 1.5, color='lightblue', alpha=0.3, label='Meio 1 ($n_1$)')
-        ax.fill_between([-1.5, 1.5], -1.5, 0, color='lightgreen', alpha=0.3, label='Meio 2 ($n_2$)')
+        ax.fill_between([-2.0, 2.0], 0, 2.0, color='lightblue', alpha=0.3, label='Meio 1 ($n_1$)')
+        ax.fill_between([-2.0, 2.0], -2.0, 0, color='lightgreen', alpha=0.3, label='Meio 2 ($n_2$)')
         
         # Desenhar Transferidor (Semicírculos)
         protractor_radius = 1.2
@@ -102,12 +133,17 @@ with tab1:
                 else:
                     ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=8, alpha=0.5)
 
+        # Distância máxima de desenho do raio para que saiam do transferidor (1.2 -> 1.8)
+        ray_length = 1.8
+        
         # Traçar raios
-        # Raio Incidente
-        x_inc = -protractor_radius * 0.8 * np.sin(angle_i_rad)
-        y_inc = protractor_radius * 0.8 * np.cos(angle_i_rad)
-        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=2.5, label='Raio Incidente')
-        ax.arrow(x_inc/2, y_inc/2, x_inc/20, -y_inc/20, head_width=0.08, head_length=0.1, fc='r', ec='r')
+        # Raio Incidente (Vermelho)
+        x_inc = -ray_length * np.sin(angle_i_rad)
+        y_inc = ray_length * np.cos(angle_i_rad)
+        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=1.5, label='Raio Incidente')
+        # Seta do raio incidente apenas com a cabeça (head) para evitar artefatos de "tail" superpostos longo do raio
+        ax.annotate('', xy=(x_inc*0.4, y_inc*0.4), xytext=(x_inc*0.5, y_inc*0.5), 
+                    arrowprops=dict(facecolor='r', edgecolor='r', width=0, headwidth=8, headlength=10, shrink=0))
         
         # Desenhar Laser na ponta do raio incidente
         laser_width = 0.2
@@ -120,25 +156,27 @@ with tab1:
         rect = plt.Rectangle((x_inc - dx*laser_length/2 + dy*laser_width/2, 
                               y_inc - dy*laser_length/2 - dx*laser_width/2), 
                               laser_length, laser_width, 
-                              angle=angle_laser, color='darkred')
+                              angle=angle_laser, color='darkred', zorder=10)
         ax.add_patch(rect)
 
 
-        # Raio Refletido
-        x_refl = protractor_radius * 0.8 * np.sin(angle_i_rad)
-        y_refl = protractor_radius * 0.8 * np.cos(angle_i_rad)
-        ax.plot([0, x_refl], [0, y_refl], 'r-', linewidth=2.5, alpha=R_intensity, label='Raio Refletido')
-        ax.arrow(0, 0, x_refl/2, y_refl/2, head_width=0.08, head_length=0.1, fc='r', ec='r', alpha=R_intensity)
+        # Raio Refletido (Azul / Lightblue)
+        x_refl = ray_length * np.sin(angle_i_rad)
+        y_refl = ray_length * np.cos(angle_i_rad)
+        ax.plot([0, x_refl], [0, y_refl], 'b-', linewidth=1.5, alpha=R_intensity, label='Raio Refletido')
+        ax.annotate('', xy=(x_refl*0.5, y_refl*0.5), xytext=(x_refl*0.4, y_refl*0.4), 
+                    arrowprops=dict(facecolor='b', edgecolor='b', width=0, headwidth=8, headlength=10, shrink=0, alpha=R_intensity))
 
-        # Raio Refratado
+        # Raio Refratado (Verde)
         if not reflexao_total:
-            x_refr = protractor_radius * 0.8 * np.sin(angle_R_rad)
-            y_refr = -protractor_radius * 0.8 * np.cos(angle_R_rad)
-            ax.plot([0, x_refr], [0, y_refr], 'r-', linewidth=2.5, alpha=T_intensity, label='Raio Refratado')
-            ax.arrow(0, 0, x_refr/2, y_refr/2, head_width=0.08, head_length=0.1, fc='r', ec='r', alpha=T_intensity)
+            x_refr = ray_length * np.sin(angle_R_rad)
+            y_refr = -ray_length * np.cos(angle_R_rad)
+            ax.plot([0, x_refr], [0, y_refr], 'g-', linewidth=1.5, alpha=T_intensity, label='Raio Refratado')
+            ax.annotate('', xy=(x_refr*0.5, y_refr*0.5), xytext=(x_refr*0.4, y_refr*0.4), 
+                        arrowprops=dict(facecolor='g', edgecolor='g', width=0, headwidth=8, headlength=10, shrink=0, alpha=T_intensity))
             
-        ax.set_xlim(-1.5, 1.5)
-        ax.set_ylim(-1.5, 1.5)
+        ax.set_xlim(-2.0, 2.0)
+        ax.set_ylim(-2.0, 2.0)
         ax.set_aspect('equal')
         ax.axis('off')
         ax.legend(loc="upper right")
