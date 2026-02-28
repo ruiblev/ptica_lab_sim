@@ -361,15 +361,18 @@ with tab2:
                 ax2.plot(dist_X2_cm, 0, 'ro', markersize=5, label="Máximo 2.ª Ordem", alpha=0.5)
                 ax2.plot(-dist_X2_cm, 0, 'ro', markersize=5, alpha=0.5)
 
-            ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
-            ax2.set_ylim(-1, 1)
-            
+            # Ocultar os números Min e Max laterais do slider do ângulo
             # Formatar eixo interativo como papel milimétrico (quadriculado)
             from matplotlib.ticker import MultipleLocator
             
             # Eixo X: marcas maiores de 1 em 1 cm, marcas menores de 0.1 em 0.1 cm (1 mm)
             ax2.xaxis.set_major_locator(MultipleLocator(1))
             ax2.xaxis.set_minor_locator(MultipleLocator(0.1))
+            
+            # Para evitar que os números (labels) de 1 em 1 cm se sobreponham e fiquem ilegíveis,
+            # vamos só mostrar o texto de 5 em 5 cm.
+            ax2.set_xticks(np.arange(-30, 31, 1)) # Garantir os ticks de 1 em 1
+            ax2.set_xticklabels([str(x) if x % 5 == 0 else "" for x in np.arange(-30, 31, 1)])
             
             # Eixo Y: (Opcional, apenas para criar a malha quadrada do papel perfeitamente)
             ax2.yaxis.set_major_locator(MultipleLocator(1))
@@ -386,9 +389,17 @@ with tab2:
             for spine in ax2.spines.values():
                 spine.set_visible(False)
             
-            ax2.set_xlabel("Distância $X$ no alvo (Escala em cm, subdivisões em mm)")
+            ax2.set_xlabel("Distância $X$ no alvo (cm)")
             ax2.set_title("Padrão de Difração no Alvo (Papel Milimétrico)")
-            ax2.legend()
+            
+            # Adicionar nota explicativa da escala do papel milimétrico 
+            # Colocar o texto no canto superior direito do eixo
+            ax2.text(0.99, 0.95, '1 quadrícula menor = 1 mm',
+                     transform=ax2.transAxes, ha='right', va='top',
+                     fontsize=9, color='darkslategray',
+                     bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', boxstyle='round,pad=0.2'))
+            
+            ax2.legend(loc='lower left')
             
             # Mudar a cor dos pontos consoante o lambda aproximado
             for collection in ax2.collections:
