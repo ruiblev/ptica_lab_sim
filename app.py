@@ -15,7 +15,7 @@ tab1, tab2 = st.tabs(["Parte I: Reflexão, Refração e Reflexão Total da Luz",
 with tab1:
     st.header("Reflexão e Refração da Luz")
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1.5, 2])
     
     with col1:
         st.subheader("Parâmetros")
@@ -34,15 +34,24 @@ with tab1:
         n1 = meios[meio1_nome]
         n2 = meios[meio2_nome]
         
-        st.write("**Ângulo de incidência (mova o slider de forma contínua):**")
+        st.write("**Ângulo de incidência (mova a barra debaixo):**")
         angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0, label_visibility="collapsed")
         
-        # Ocultar o valor do slider da UI injetando CSS (Streamlit nativo não permite esconder facilmente o número se não por CSS)
+        # Ocultar TODOS os números em sliders (o próprio valor do slider e max/min) agressivamente
         st.markdown(
             """
             <style>
-                div[data-testid="stSliderTickBar"] {display: none;}
-                div[data-testid="stSliderValue"] {display: none;}
+                /* Ocultar os números Min e Max laterais e a flag do número selecionado */
+                [data-testid="stTickBar"] {display: none !important;}
+                [data-testid="stSliderValue"] {display: none !important;}
+                .st-bd {display: none !important;}
+                div[data-testid="stSlider"] > div > div > div > div[role="slider"] {
+                   /* Ocultar o texto literal injetado dentro da tag se existir nalguma versao */
+                   color: transparent !important;
+                }
+                div[data-testid="stSlider"] div[data-testid="stMarkdownContainer"] {
+                   display: none !important;
+                }
             </style>
             """,
             unsafe_allow_html=True
