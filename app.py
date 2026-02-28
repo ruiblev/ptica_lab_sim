@@ -361,7 +361,11 @@ with tab2:
                 ax2.plot(dist_X2_cm, 0, 'ro', markersize=5, label="Máximo 2.ª Ordem", alpha=0.5)
                 ax2.plot(-dist_X2_cm, 0, 'ro', markersize=5, alpha=0.5)
 
-            # Ocultar os números Min e Max laterais do slider do ângulo
+            # Restaurar os limites perdidos e forçar as quadrículas a serem matematicamente quadradas
+            ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
+            ax2.set_ylim(-1.5, 1.5)
+            ax2.set_aspect('equal')
+            
             # Formatar eixo interativo como papel milimétrico (quadriculado)
             from matplotlib.ticker import MultipleLocator
             
