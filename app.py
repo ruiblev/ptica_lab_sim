@@ -19,8 +19,20 @@ with tab1:
     
     with col1:
         st.subheader("Parâmetros")
-        n1 = st.slider("Índice de refração do Meio 1 ($n_1$)", min_value=1.0, max_value=2.5, value=1.0, step=0.01, help="Ex: Ar ≈ 1.0, Água ≈ 1.33")
-        n2 = st.slider("Índice de refração do Meio 2 ($n_2$)", min_value=1.0, max_value=2.5, value=1.5, step=0.01, help="Ex: Vidro ≈ 1.5")
+        # Dicionário de meios e respetivos índices de refração
+        meios = {
+            "Ar (n ≈ 1.00)": 1.000,
+            "Água (n ≈ 1.33)": 1.333,
+            "Acetona (n ≈ 1.36)": 1.360,
+            "Acrílico (n ≈ 1.49)": 1.490,
+            "Vidro (n ≈ 1.52)": 1.520
+        }
+        
+        meio1_nome = st.selectbox("Meio de Incidência (Meio 1)", options=list(meios.keys()), index=0)
+        meio2_nome = st.selectbox("Meio de Refração (Meio 2)", options=list(meios.keys()), index=4)
+        
+        n1 = meios[meio1_nome]
+        n2 = meios[meio2_nome]
         angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0)
         
         # Cálculos de reflexão e refração (Fresnel Equations aproximado para alpha)
