@@ -137,10 +137,12 @@ with tab1:
         ray_length = 1.8
         
         # Traçar raios
-        # Raio Incidente (Vermelho)
+        # Raio Incidente (Linha Vermelha, Seta Vermelha)
         x_inc = -ray_length * np.sin(angle_i_rad)
         y_inc = ray_length * np.cos(angle_i_rad)
-        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=1.5, label='Raio Incidente')
+        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=1.5)
+        ax.plot([], [], 'r-', linewidth=2, label='Raio Incidente') # Dummy para a legenda
+        
         # Seta do raio incidente apenas com a cabeça (head) para evitar artefatos de "tail" superpostos longo do raio
         ax.annotate('', xy=(x_inc*0.4, y_inc*0.4), xytext=(x_inc*0.5, y_inc*0.5), 
                     arrowprops=dict(facecolor='r', edgecolor='r', width=0, headwidth=8, headlength=10, shrink=0))
@@ -160,18 +162,22 @@ with tab1:
         ax.add_patch(rect)
 
 
-        # Raio Refletido (Azul / Lightblue)
+        # Raio Refletido (Linha Vermelha, Seta Azul)
         x_refl = ray_length * np.sin(angle_i_rad)
         y_refl = ray_length * np.cos(angle_i_rad)
-        ax.plot([0, x_refl], [0, y_refl], 'b-', linewidth=1.5, alpha=R_intensity, label='Raio Refletido')
+        ax.plot([0, x_refl], [0, y_refl], 'r-', linewidth=1.5, alpha=R_intensity)
+        ax.plot([], [], 'b-', linewidth=2, label='Raio Refletido (Seta)') # Dummy para a legenda
+        
         ax.annotate('', xy=(x_refl*0.5, y_refl*0.5), xytext=(x_refl*0.4, y_refl*0.4), 
                     arrowprops=dict(facecolor='b', edgecolor='b', width=0, headwidth=8, headlength=10, shrink=0, alpha=R_intensity))
 
-        # Raio Refratado (Verde)
+        # Raio Refratado (Linha Vermelha, Seta Verde)
         if not reflexao_total:
             x_refr = ray_length * np.sin(angle_R_rad)
             y_refr = -ray_length * np.cos(angle_R_rad)
-            ax.plot([0, x_refr], [0, y_refr], 'g-', linewidth=1.5, alpha=T_intensity, label='Raio Refratado')
+            ax.plot([0, x_refr], [0, y_refr], 'r-', linewidth=1.5, alpha=T_intensity)
+            ax.plot([], [], 'g-', linewidth=2, label='Raio Refratado (Seta)') # Dummy para a legenda
+            
             ax.annotate('', xy=(x_refr*0.5, y_refr*0.5), xytext=(x_refr*0.4, y_refr*0.4), 
                         arrowprops=dict(facecolor='g', edgecolor='g', width=0, headwidth=8, headlength=10, shrink=0, alpha=T_intensity))
             
