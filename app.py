@@ -343,8 +343,8 @@ with tab2:
         st.write("---")
         st.subheader("Padrão de Intensidade no Alvo")
         if sin_theta <= 1:
-            # Aumentar a largura da figura drasticamente e reduzir a altura para evitar margens em branco
-            fig2, ax2 = plt.subplots(figsize=(15, 2))
+            # Aumentar a figura para um quadrado grande
+            fig2, ax2 = plt.subplots(figsize=(10, 10))
             
             # Ponto central intenso
             ax2.plot(0, 0, 'ro', markersize=14, label="Máximo Central", alpha=0.9)
@@ -363,9 +363,9 @@ with tab2:
                 ax2.plot(-dist_X2_cm, 0, 'ro', markersize=6, alpha=0.5)
 
             # As quadrículas do papel milimétrico não devem ser variáveis
-            # Definir limites X e Y estáticos num rácio que condiga com a figsize para maximizar a largura
+            # Eixos horizontais e verticais iguais para criar uma autêntica folha quadrada
             ax2.set_xlim(-30, 30)
-            ax2.set_ylim(-2, 2)
+            ax2.set_ylim(-30, 30)
             ax2.set_aspect('equal')
             
             # Formatar eixo interativo como papel milimétrico (quadriculado)
