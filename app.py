@@ -33,7 +33,20 @@ with tab1:
         
         n1 = meios[meio1_nome]
         n2 = meios[meio2_nome]
-        angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0)
+        
+        st.write("**Ângulo de incidência (mova o slider de forma contínua):**")
+        angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0, label_visibility="collapsed")
+        
+        # Ocultar o valor do slider da UI injetando CSS (Streamlit nativo não permite esconder facilmente o número se não por CSS)
+        st.markdown(
+            """
+            <style>
+                div[data-testid="stSliderTickBar"] {display: none;}
+                div[data-testid="stSliderValue"] {display: none;}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
         
         # Cálculos de reflexão e refração (Fresnel Equations aproximado para alpha)
         angle_i_rad = np.radians(angle_i_deg)
@@ -120,7 +133,7 @@ with tab1:
                  
     with col2:
         # Gráfico interativo
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(8, 8))
         
         # Superfície de separação
         ax.axhline(0, color='gray', linewidth=2, linestyle='--')
