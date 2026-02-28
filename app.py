@@ -23,7 +23,7 @@ with tab1:
         n2 = st.slider("Índice de refração do Meio 2 ($n_2$)", min_value=1.0, max_value=2.5, value=1.5, step=0.01, help="Ex: Vidro ≈ 1.5")
         angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0)
         
-        # Cálculos de reflexão e refração
+        # Cálculos de reflexão e refração (Fresnel Equations aproximado para alpha)
         angle_i_rad = np.radians(angle_i_deg)
         angle_refletido_deg = angle_i_deg
         
@@ -34,24 +34,37 @@ with tab1:
         angulo_critico = None
         angle_R_deg = None
         
-        if sin_R > 1:
+        # Intensidades aproximadas (Fresnel) apenas com r_s para visualização
+        if sin_R >= 1:
             reflexao_total = True
             angulo_critico = np.degrees(np.arcsin(n2 / n1))
+            R_intensity = 1.0
+            T_intensity = 0.0
         else:
-            angle_R_deg = np.degrees(np.arcsin(sin_R))
+            angle_R_rad = np.arcsin(sin_R)
+            angle_R_deg = np.degrees(angle_R_rad)
             if n1 > n2:
                 angulo_critico = np.degrees(np.arcsin(n2 / n1))
+                
+            # Coeficientes Fresnel (aproximação s-polarized)
+            num = n1 * np.cos(angle_i_rad) - n2 * np.cos(angle_R_rad)
+            den = n1 * np.cos(angle_i_rad) + n2 * np.cos(angle_R_rad)
+            R_intensity = abs(num / den)**2
+            
+            # Garantir uma visibilidade minima
+            R_intensity = max(0.15, R_intensity) 
+            T_intensity = 1.0 - R_intensity
                 
         # Exibição de resultados na interface
         st.write("---")
         st.subheader("Resultados")
-        st.write(f"**Ângulo de reflexão ($\\alpha_r$):** {angle_refletido_deg:.2f}°")
+        st.write(f"**Ângulo de reflexão ($\\alpha_r$):** {angle_refletido_deg:.2f}° (Intensidade visual: {R_intensity*100:.0f}%)")
         
         if reflexao_total:
             st.error(f"⚠️ **Reflexão Total!** Não há refração para o meio 2.")
             st.write(f"**Ângulo limite (crítico):** {angulo_critico:.2f}°")
         else:
-            st.success(f"**Ângulo de refração ($\\alpha_R$):** {angle_R_deg:.2f}°")
+            st.success(f"**Ângulo de refração ($\\alpha_R$):** {angle_R_deg:.2f}° (Intensidade visual: {T_intensity*100:.0f}%)")
             if angulo_critico:
                 st.info(f"**Ângulo limite (crítico) para a transição atual:** {angulo_critico:.2f}°")
                 
@@ -63,33 +76,69 @@ with tab1:
         ax.axhline(0, color='gray', linewidth=2, linestyle='--')
         ax.axvline(0, color='black', linewidth=1, linestyle=':') # Normal
         
-        ax.fill_between([-1, 1], 0, 1, color='lightblue', alpha=0.3, label='Meio 1 ($n_1$)')
-        ax.fill_between([-1, 1], -1, 0, color='lightgreen', alpha=0.3, label='Meio 2 ($n_2$)')
+        ax.fill_between([-1.5, 1.5], 0, 1.5, color='lightblue', alpha=0.3, label='Meio 1 ($n_1$)')
+        ax.fill_between([-1.5, 1.5], -1.5, 0, color='lightgreen', alpha=0.3, label='Meio 2 ($n_2$)')
         
+        # Desenhar Transferidor (Semicírculos)
+        protractor_radius = 1.2
+        circle = plt.Circle((0, 0), protractor_radius, color='gray', fill=False, linestyle='--', alpha=0.5)
+        ax.add_patch(circle)
+        
+        # Marcas do transferidor (de 10 em 10 graus)
+        for angle in range(0, 360, 10):
+            rad = np.radians(angle)
+            x_start = protractor_radius * 0.95 * np.cos(rad)
+            y_start = protractor_radius * 0.95 * np.sin(rad)
+            x_end = protractor_radius * np.cos(rad)
+            y_end = protractor_radius * np.sin(rad)
+            ax.plot([x_start, x_end], [y_start, y_end], color='black', alpha=0.3, linewidth=1)
+            
+            # Textos a cada 30 graus
+            if angle % 30 == 0:
+                # Ajustar ângulo para mostrar em torno da normal
+                display_angle = abs((angle % 180) - 90)
+                if y_end >= 0:
+                    ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=8, alpha=0.5)
+                else:
+                    ax.text(x_end * 1.08, y_end * 1.08, f"{display_angle}°", ha='center', va='center', fontsize=8, alpha=0.5)
+
         # Traçar raios
         # Raio Incidente
-        x_inc = -np.sin(angle_i_rad)
-        y_inc = np.cos(angle_i_rad)
-        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=2, label='Raio Incidente')
-        # Seta do raio incidente
-        ax.arrow(x_inc/2, y_inc/2, x_inc/20, -y_inc/20, head_width=0.05, head_length=0.1, fc='r', ec='r')
+        x_inc = -protractor_radius * 0.8 * np.sin(angle_i_rad)
+        y_inc = protractor_radius * 0.8 * np.cos(angle_i_rad)
+        ax.plot([x_inc, 0], [y_inc, 0], 'r-', linewidth=2.5, label='Raio Incidente')
+        ax.arrow(x_inc/2, y_inc/2, x_inc/20, -y_inc/20, head_width=0.08, head_length=0.1, fc='r', ec='r')
+        
+        # Desenhar Laser na ponta do raio incidente
+        laser_width = 0.2
+        laser_length = 0.4
+        dx = x_inc/np.linalg.norm([x_inc,y_inc])
+        dy = y_inc/np.linalg.norm([x_inc,y_inc])
+        
+        # Transformar coordenadas para desenhar o rectângulo do laser
+        angle_laser = np.degrees(np.arctan2(y_inc, x_inc))
+        rect = plt.Rectangle((x_inc - dx*laser_length/2 + dy*laser_width/2, 
+                              y_inc - dy*laser_length/2 - dx*laser_width/2), 
+                              laser_length, laser_width, 
+                              angle=angle_laser, color='darkred')
+        ax.add_patch(rect)
+
 
         # Raio Refletido
-        x_refl = np.sin(angle_i_rad)
-        y_refl = np.cos(angle_i_rad)
-        ax.plot([0, x_refl], [0, y_refl], 'b-', linewidth=2, label='Raio Refletido')
-        ax.arrow(0, 0, x_refl/2, y_refl/2, head_width=0.05, head_length=0.1, fc='b', ec='b')
+        x_refl = protractor_radius * 0.8 * np.sin(angle_i_rad)
+        y_refl = protractor_radius * 0.8 * np.cos(angle_i_rad)
+        ax.plot([0, x_refl], [0, y_refl], 'r-', linewidth=2.5, alpha=R_intensity, label='Raio Refletido')
+        ax.arrow(0, 0, x_refl/2, y_refl/2, head_width=0.08, head_length=0.1, fc='r', ec='r', alpha=R_intensity)
 
         # Raio Refratado
         if not reflexao_total:
-            angle_R_rad = np.radians(angle_R_deg)
-            x_refr = np.sin(angle_R_rad)
-            y_refr = -np.cos(angle_R_rad)
-            ax.plot([0, x_refr], [0, y_refr], 'g-', linewidth=2, label='Raio Refratado')
-            ax.arrow(0, 0, x_refr/2, y_refr/2, head_width=0.05, head_length=0.1, fc='g', ec='g')
+            x_refr = protractor_radius * 0.8 * np.sin(angle_R_rad)
+            y_refr = -protractor_radius * 0.8 * np.cos(angle_R_rad)
+            ax.plot([0, x_refr], [0, y_refr], 'r-', linewidth=2.5, alpha=T_intensity, label='Raio Refratado')
+            ax.arrow(0, 0, x_refr/2, y_refr/2, head_width=0.08, head_length=0.1, fc='r', ec='r', alpha=T_intensity)
             
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
+        ax.set_xlim(-1.5, 1.5)
+        ax.set_ylim(-1.5, 1.5)
         ax.set_aspect('equal')
         ax.axis('off')
         ax.legend(loc="upper right")
