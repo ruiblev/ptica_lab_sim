@@ -369,10 +369,8 @@ with tab2:
             ax2.xaxis.set_major_locator(MultipleLocator(1))
             ax2.xaxis.set_minor_locator(MultipleLocator(0.1))
             
-            # Para evitar que os números (labels) de 1 em 1 cm se sobreponham e fiquem ilegíveis,
-            # vamos só mostrar o texto de 5 em 5 cm.
-            ax2.set_xticks(np.arange(-30, 31, 1)) # Garantir os ticks de 1 em 1
-            ax2.set_xticklabels([str(x) if x % 5 == 0 else "" for x in np.arange(-30, 31, 1)])
+            # Ocultar os números do eixo X por completo, pois sobrepõem-se e tornam a escala ilegível.
+            ax2.tick_params(axis='x', which='both', labelbottom=False)
             
             # Eixo Y: (Opcional, apenas para criar a malha quadrada do papel perfeitamente)
             ax2.yaxis.set_major_locator(MultipleLocator(1))
@@ -389,15 +387,15 @@ with tab2:
             for spine in ax2.spines.values():
                 spine.set_visible(False)
             
-            ax2.set_xlabel("Distância $X$ no alvo (cm)")
+            ax2.set_xlabel("Distância $X$ no alvo")
             ax2.set_title("Padrão de Difração no Alvo (Papel Milimétrico)")
             
             # Adicionar nota explicativa da escala do papel milimétrico 
             # Colocar o texto no canto superior direito do eixo
-            ax2.text(0.99, 0.95, '1 quadrícula menor = 1 mm',
+            ax2.text(0.99, 0.95, 'Cada quadrícula menor: $1\,mm \\times 1\,mm$',
                      transform=ax2.transAxes, ha='right', va='top',
-                     fontsize=9, color='darkslategray',
-                     bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', boxstyle='round,pad=0.2'))
+                     fontsize=10, color='darkred', weight='bold',
+                     bbox=dict(facecolor='white', alpha=0.9, edgecolor='gray', boxstyle='round,pad=0.3'))
             
             ax2.legend(loc='lower left')
             
