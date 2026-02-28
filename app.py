@@ -250,6 +250,9 @@ with tab2:
     st.header("Difração da Luz")
     st.markdown(r"Equação da rede de difração: $n\lambda = d \sin\theta$, com $\tan\theta = \frac{X}{D}$")
     
+    if "show_x_hint" not in st.session_state:
+        st.session_state.show_x_hint = False
+        
     col3, col4 = st.columns([1, 2])
     
     with col3:
@@ -263,10 +266,6 @@ with tab2:
         dist_D = st.slider("Distância ao Alvo ($D$ em metros)", min_value=0.1, max_value=3.0, value=1.0, step=0.1)
         
         # Cálculos de Difração - Máximos na Rede
-        st.write("---")
-        st.subheader("Tratamento de Resultados")
-        
-        st.write(f"**Distância entre fendas ($d$):** {d_m * 1e6:.2f} $\\mu$m")
         
         # Determinar posição X do máximo de 1.ª ordem (n=1)
         sin_theta = wav_m / d_m
@@ -277,8 +276,8 @@ with tab2:
             dist_X_m = dist_D * np.tan(theta_rad)
             dist_X_cm = dist_X_m * 100
             
-            st.success(f"**Ângulo $\\theta$ (1.ª ordem):** {np.degrees(theta_rad):.2f}°")
-            st.success(f"**Distância $X$ ao máximo central:** {dist_X_cm:.2f} cm")
+            if st.session_state.show_x_hint:
+                st.success(f"**Distância $X$ ao máximo central:** {dist_X_cm:.2f} cm")
             
     with col4:
         # 1. VISUALIZAÇÃO MACROSCÓPICA DA MONTAGEM (NOVO)
@@ -309,38 +308,106 @@ with tab2:
             ax_setup.plot([fenda_x, fenda_x], [-1, -0.1], color='black', linewidth=4)
             
             # Raio primário (Laser até Fenda)
-            ax_setup.fill_between([laser_width, fenda_x], -0.1, 0.1, color=cor_laser, alpha=0.6)
+            ax_setup.fill_between([laser_width, fenda_x], -0.03, 0.03, color=cor_laser, alpha=0.6)
             
-            # Alvo / Ecrã móvel
+            # Alvo / Ecrã móvel em perspetiva pseudo-3D
             # Simular o ecrã a afastar-se usando dist_D para escalar a posição visual
             min_D, max_D = 0.1, 3.0
-            # Mapear D real para posição gráfica (ex: 3.5 a 7.5 max)
             alvo_x = 3.5 + ((dist_D - min_D) / (max_D - min_D)) * 4.0 
             
-            ax_setup.plot([alvo_x, alvo_x], [-1.2, 1.2], color='darkslategray', linewidth=6)
-            ax_setup.text(alvo_x + 0.2, 1.0, f'D = {dist_D} m', ha='left', va='center', fontsize=9)
+            # Desenhar o ecrã como um polígono inclinado (perspetiva)
+            largura_ecra = 0.8
+            altura_ecra = 1.3
+            inclinacao = 0.5 # Deslocamento x para simular inclinação 3D
             
+            ecra_coords = [
+                (alvo_x, altura_ecra),                             # Topo Esquerda
+                (alvo_x + inclinacao, altura_ecra - 0.2),          # Topo Direita
+                (alvo_x + inclinacao, -altura_ecra - 0.2),         # Fundo Direita
+                (alvo_x, -altura_ecra)                             # Fundo Esquerda
+            ]
+            
+            ecra_patch = plt.Polygon(ecra_coords, closed=True, color='black', zorder=5)
+            ax_setup.add_patch(ecra_patch)
+            
+            ax_setup.text(alvo_x + inclinacao/2, altura_ecra + 0.2, f'D = {dist_D} m', ha='center', va='bottom', fontsize=9)
+            
+            # Centro geométrico do ecrã em perspetiva
+            centro_x = alvo_x + inclinacao/2
+            centro_y = -0.1
+            
+            # Desenhar máximos de difração brilhantes NO ecrã inclinado
+            # O eixo X do difratograma no papel milimétrico espalha-se na linha central do ecrã
+            
+            # Ajuste de escala visual para os pontos caberem no ecrã (X máx aprox 1.5 cm visuais)
+            # Vamos limitar dist_X_m por questões visuais no gráfico
+            escala_X = min(0.8, dist_X_m) if dist_X_m > 0 else 0
+            
+            # O eixo "horizontal" da difração no ecrã desenha-se unindo as laterais do ecrã
+            # Equação da reta central do ecrã:
+            dy_centro = (-altura_ecra - 0.2 - altura_ecra) / 2 # Ponto médio lateral direita
+            
+            # Máximo Central (Ordem 0)
+            ax_setup.plot(centro_x, centro_y, 'o', color=cor_laser, markersize=5, alpha=0.9, zorder=6)
+            
+            if sin_theta <= 1:
+                # O vetor diretor do plano ao longo do qual os pontos surgem: (inclinacao, -0.2)
+                norma = np.sqrt(inclinacao**2 + (-0.2)**2)
+                vx = inclinacao / norma
+                vy = -0.2 / norma
+                
+                # Deslocamento visual baseado em dist_X_m ajustado para caber na moldura do ecrã
+                desloc = min(0.25, dist_X_m * 0.8) 
+                
+                # Máximos de 1.ª Ordem
+                x1_dir = centro_x + vx * desloc
+                y1_dir = centro_y + vy * desloc
+                x1_esq = centro_x - vx * desloc
+                y1_esq = centro_y - vy * desloc
+                
+                # O limite do papel milimétrico é de +- 30 cm, vamos sincronizar as views
+                if dist_X_cm <= 30.0:
+                    ax_setup.plot(x1_dir, y1_dir, 'o', color=cor_laser, markersize=3, alpha=0.7, zorder=6)
+                    ax_setup.plot(x1_esq, y1_esq, 'o', color=cor_laser, markersize=3, alpha=0.7, zorder=6)
+                    
+                    # Máximos de 2.ª Ordem se couberem e se existirem
+                    sin_theta_2 = 2 * wav_m / d_m
+                    if sin_theta_2 <= 1:
+                         theta_rad_2 = np.arcsin(sin_theta_2)
+                         dist_X2_m = dist_D * np.tan(theta_rad_2)
+                         dist_X2_cm = dist_X2_m * 100
+                         desloc2 = min(0.25, dist_X2_m * 0.8)
+                         
+                         if dist_X2_cm <= 30.0:
+                             x2_dir = centro_x + vx * desloc2
+                             y2_dir = centro_y + vy * desloc2
+                             x2_esq = centro_x - vx * desloc2
+                             y2_esq = centro_y - vy * desloc2
+                             
+                             ax_setup.plot(x2_dir, y2_dir, 'o', color=cor_laser, markersize=1.5, alpha=0.5, zorder=6)
+                             ax_setup.plot(x2_esq, y2_esq, 'o', color=cor_laser, markersize=1.5, alpha=0.5, zorder=6)
+
             # Cone de Difração (espalhamento) da Fenda para o Ecrã
-            # A base do cone cresce com D e com Theta
-            cone_y_max = alvo_x * np.tan(theta_rad) # Abertura visual baseada no ângulo principal
-            # Limitar visualmente a abertura extrema para o gráfico não quebrar
-            cone_y_max = min(1.2, max(0.2, cone_y_max)) * 1.5 
-            
-            ax_setup.fill_between([fenda_x, alvo_x], 
-                                  [-0.1, -cone_y_max], 
-                                  [0.1, cone_y_max], 
-                                  color=cor_laser, alpha=0.2)
+            # O cone primário limita-se um pouco para não cobrir o ecrã a 100% verticalmente
+            cone_abertura = 0.4
+            ax_setup.fill_between([fenda_x, alvo_x, alvo_x+inclinacao], 
+                                  [-0.03, -cone_abertura, -cone_abertura-0.2], 
+                                  [0.03, cone_abertura, cone_abertura-0.2], 
+                                  color=cor_laser, alpha=0.2, zorder=1)
             
             # Eixo Principal
-            ax_setup.plot([0, alvo_x+1], [0, 0], color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+            ax_setup.plot([0, centro_x+0.5], [0, centro_y], color='black', linestyle='--', linewidth=0.5, alpha=0.5, zorder=4)
+
 
             ax_setup.set_xlim(-0.5, 8.5)
             ax_setup.set_ylim(-1.5, 1.5)
             ax_setup.axis('off')
             st.pyplot(fig_setup)
 
+    st.write("---")
+    col_padL, col_center, col_padR = st.columns([1, 4, 1])
+    with col_center:
         # 2. ILUSTRAÇÃO DOS MÁXIMOS NO ALVO (ANTERIOR)
-        st.write("---")
         st.subheader("Padrão de Intensidade no Alvo")
         if sin_theta <= 1:
             # Reduzir a altura para metade (10x5 em vez de 10x10) mantendo a largura
@@ -349,18 +416,20 @@ with tab2:
             # Ponto central intenso
             ax2.plot(0, 0, 'ro', markersize=14, label="Máximo Central", alpha=0.9)
             
-            # Máximos de 1.ª Ordem
-            ax2.plot(dist_X_cm, 0, 'ro', markersize=10, label="Máximo 1.ª Ordem", alpha=0.7)
-            ax2.plot(-dist_X_cm, 0, 'ro', markersize=10, alpha=0.7)
-            
-            # Máximos de 2.ª Ordem (se existir)
-            sin_theta_2 = 2 * wav_m / d_m
-            if sin_theta_2 <= 1:
-                theta_rad_2 = np.arcsin(sin_theta_2)
-                dist_X2_m = dist_D * np.tan(theta_rad_2)
-                dist_X2_cm = dist_X2_m * 100
-                ax2.plot(dist_X2_cm, 0, 'ro', markersize=6, label="Máximo 2.ª Ordem", alpha=0.5)
-                ax2.plot(-dist_X2_cm, 0, 'ro', markersize=6, alpha=0.5)
+            # Máximos de 1.ª Ordem (se couberem no papel <= 30cm)
+            if dist_X_cm <= 30.0:
+                ax2.plot(dist_X_cm, 0, 'ro', markersize=10, label="Máximo 1.ª Ordem", alpha=0.7)
+                ax2.plot(-dist_X_cm, 0, 'ro', markersize=10, alpha=0.7)
+                
+                # Máximos de 2.ª Ordem (se existir e couber)
+                sin_theta_2 = 2 * wav_m / d_m
+                if sin_theta_2 <= 1:
+                    theta_rad_2 = np.arcsin(sin_theta_2)
+                    dist_X2_m = dist_D * np.tan(theta_rad_2)
+                    dist_X2_cm = dist_X2_m * 100
+                    if dist_X2_cm <= 30.0:
+                        ax2.plot(dist_X2_cm, 0, 'ro', markersize=6, label="Máximo 2.ª Ordem", alpha=0.5)
+                        ax2.plot(-dist_X2_cm, 0, 'ro', markersize=6, alpha=0.5)
 
             # As quadrículas do papel milimétrico não devem ser variáveis
             # Reduzir o eixo vertical a metade (+- 15cm vs +- 30cm horizontais)
@@ -398,7 +467,7 @@ with tab2:
             
             # Adicionar nota explicativa da escala do papel milimétrico 
             # Colocar o texto fora da zona dos pontos para evitar a colisão visual
-            ax2.text(0.01, 0.95, 'Cada quadrícula maior: $1\,cm \\times 1\,cm$',
+            ax2.text(0.01, 0.95, r'Cada quadrícula maior: $1\,cm \times 1\,cm$',
                      transform=ax2.transAxes, ha='left', va='top',
                      fontsize=11, color='darkred', weight='bold',
                      bbox=dict(facecolor='white', alpha=0.9, edgecolor='gray', boxstyle='round,pad=0.3'))
@@ -414,3 +483,83 @@ with tab2:
                 line.set_color(cor_laser)
 
             st.pyplot(fig2)
+            
+            if st.session_state.show_x_hint:
+                st.info("💡 **Dica:** Para uma melhor leitura do valor $X$, tenta comparar as tuas medições no papel milimétrico com o valor de referência que o simulador te fornece.")
+
+    st.write("---")
+    st.subheader("Análise Gráfica: $X$ em função de $D$")
+    st.markdown("Registe os valores medidos da distância $X$ ao máximo de 1.ª ordem para diferentes distâncias $D$ do ecrã à rede. O declive da reta de regressão linear corresponde a $\\tan(\\theta)$.")
+    
+    col_table, col_plot = st.columns([1, 2])
+    
+    with col_table:
+        if "tabela_difracao" not in st.session_state:
+            import pandas as pd
+            st.session_state.tabela_difracao = pd.DataFrame({
+                "D (m)": [0.2, 0.4, 0.6, 0.8, 1.0],
+                "X (m)": [0.0, 0.0, 0.0, 0.0, 0.0]
+            })
+            
+        edited_df = st.data_editor(st.session_state.tabela_difracao, num_rows="dynamic", width="stretch")
+        st.session_state.tabela_difracao = edited_df
+        
+    with col_plot:
+        df_valid = edited_df.dropna()
+        # Verificar se há pelo menos dois pontos com D > 0 e X > 0 para traçar um gráfico significativo
+        df_valid = df_valid[(df_valid["D (m)"] > 0) & (df_valid["X (m)"] > 0)]
+        
+        if len(df_valid) >= 2:
+            x_vals = df_valid["D (m)"].values
+            y_vals = df_valid["X (m)"].values
+            
+            try:
+                # Ajuste linear y = mx + b
+                m, b = np.polyfit(x_vals, y_vals, 1)
+                
+                fig3, ax3 = plt.subplots(figsize=(8, 4))
+                ax3.plot(x_vals, y_vals, 'o', color='darkred', label='Dados experimentais')
+                
+                x_fit = np.linspace(0, max(x_vals)*1.1 if len(x_vals)>0 else 1, 100)
+                y_fit = m * x_fit + b
+                ax3.plot(x_fit, y_fit, '-', color='blue', alpha=0.6, label=f'Ajuste Linear: $X = {m:.4f} D {b:+.4f}$')
+                
+                ax3.set_xlabel('Distância ao Ecrã, $D$ (m)')
+                ax3.set_ylabel('Posição do Máximo, $X$ (m)')
+                ax3.set_title("Gráfico $X = f(D)$")
+                ax3.grid(True, linestyle='--', alpha=0.7)
+                ax3.legend()
+                
+                st.pyplot(fig3)
+                
+                st.info(f"**Declive obtido ($m$):** {m:.4f}")
+                
+                if sin_theta <= 1:
+                    tan_theta_teorico = np.tan(theta_rad)
+                    theta_teorico_deg = np.degrees(theta_rad)
+                    
+                    st.write("---")
+                    st.write("Determine o ângulo de difração $\\theta$ a partir do declive da reta ($m = \\tan(\\theta)$):")
+                    med_theta = st.number_input("O seu valor calculado para $\\theta$ (graus)", min_value=0.0, max_value=90.0, value=0.0, step=0.1, key="theta_calc")
+                    
+                    if st.button("Verificar Ângulo"):
+                        if med_theta > 0:
+                            erro_relativo = abs(med_theta - theta_teorico_deg) / theta_teorico_deg * 100
+                            st.write(f"**Ângulo Teórico:** {theta_teorico_deg:.2f}°")
+                            st.write(f"**Erro Relativo:** {erro_relativo:.1f}%")
+                            
+                            if erro_relativo < 5.0:
+                                st.success("✅ Excelente precisão! O seu valor está muito próximo do valor teórico.")
+                            elif erro_relativo >= 10.0:
+                                st.warning("⚠️ Tiveste um erro superior a 10 %. Queres tentar de novo com dicas dadas pelo simulador?")
+                                def enable_hint():
+                                    st.session_state.show_x_hint = True
+                                st.button("Sim, quero uma dica!", key="hint_btn", on_click=enable_hint)
+                            else:
+                                st.warning("⚠️ O erro é superior a 5%. Reveja os seus cálculos.")
+                        else:
+                            st.warning("Insira um valor maior que 0 para verificar.")
+            except Exception as e:
+                st.warning("Não foi possível realizar o ajuste linear. Verifique os valores inseridos.")
+        else:
+            st.info("Insira pelo menos 2 pontos (D > 0 e X > 0) na tabela para gerar o gráfico e o ajuste linear.")
