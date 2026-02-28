@@ -280,36 +280,69 @@ with tab2:
             st.success(f"**Distância $X$ ao máximo central:** {dist_X_cm:.2f} cm")
             
     with col4:
-        # Ilustrar graficamente no alvo
+        # 1. VISUALIZAÇÃO MACROSCÓPICA DA MONTAGEM (NOVO)
+        if sin_theta <= 1:
+            st.subheader("Visualização da Montagem")
+            fig_setup, ax_setup = plt.subplots(figsize=(8, 2.5))
+            
+            # Correntes aproximadas para o feixe laser
+            if wav_nm > 600:
+                cor_laser = '#FF0000' # Vermelhos
+            elif wav_nm > 500:
+                cor_laser = '#00FF00' # Verdes
+            elif wav_nm > 450:
+                cor_laser = '#0088FF' # Azuis claros
+            else:
+                cor_laser = '#4400FF' # Violetas
+                
+            # Laser Box
+            laser_width = 0.4
+            laser_height = 0.6
+            rect = plt.Rectangle((0, -laser_height/2), laser_width, laser_height, color='gray', zorder=10)
+            ax_setup.add_patch(rect)
+            ax_setup.text(0.2, 0, 'Laser', ha='center', va='center', color='white', fontsize=10, zorder=11, rotation=90)
+            
+            # Fenda
+            fenda_x = 2.0
+            ax_setup.plot([fenda_x, fenda_x], [0.1, 1], color='black', linewidth=4)
+            ax_setup.plot([fenda_x, fenda_x], [-1, -0.1], color='black', linewidth=4)
+            
+            # Raio primário (Laser até Fenda)
+            ax_setup.fill_between([laser_width, fenda_x], -0.1, 0.1, color=cor_laser, alpha=0.6)
+            
+            # Alvo / Ecrã móvel
+            # Simular o ecrã a afastar-se usando dist_D para escalar a posição visual
+            min_D, max_D = 0.1, 3.0
+            # Mapear D real para posição gráfica (ex: 3.5 a 7.5 max)
+            alvo_x = 3.5 + ((dist_D - min_D) / (max_D - min_D)) * 4.0 
+            
+            ax_setup.plot([alvo_x, alvo_x], [-1.2, 1.2], color='darkslategray', linewidth=6)
+            ax_setup.text(alvo_x + 0.2, 1.0, f'D = {dist_D} m', ha='left', va='center', fontsize=9)
+            
+            # Cone de Difração (espalhamento) da Fenda para o Ecrã
+            # A base do cone cresce com D e com Theta
+            cone_y_max = alvo_x * np.tan(theta_rad) # Abertura visual baseada no ângulo principal
+            # Limitar visualmente a abertura extrema para o gráfico não quebrar
+            cone_y_max = min(1.2, max(0.2, cone_y_max)) * 1.5 
+            
+            ax_setup.fill_between([fenda_x, alvo_x], 
+                                  [-0.1, -cone_y_max], 
+                                  [0.1, cone_y_max], 
+                                  color=cor_laser, alpha=0.2)
+            
+            # Eixo Principal
+            ax_setup.plot([0, alvo_x+1], [0, 0], color='black', linestyle='--', linewidth=0.5, alpha=0.5)
+
+            ax_setup.set_xlim(-0.5, 8.5)
+            ax_setup.set_ylim(-1.5, 1.5)
+            ax_setup.axis('off')
+            st.pyplot(fig_setup)
+
+        # 2. ILUSTRAÇÃO DOS MÁXIMOS NO ALVO (ANTERIOR)
+        st.write("---")
+        st.subheader("Padrão de Intensidade no Alvo")
         if sin_theta <= 1:
             fig2, ax2 = plt.subplots(figsize=(8, 4))
-            
-            # Ponto central intenso
-            ax2.plot(0, 0, 'ro', markersize=12, label="Máximo Central", alpha=0.9)
-            
-            # Máximos de 1.ª Ordem
-            ax2.plot(dist_X_cm, 0, 'ro', markersize=8, label="Máximo 1.ª Ordem", alpha=0.7)
-            ax2.plot(-dist_X_cm, 0, 'ro', markersize=8, alpha=0.7)
-            
-            # Máximos de 2.ª Ordem (se existir)
-            sin_theta_2 = 2 * wav_m / d_m
-            if sin_theta_2 <= 1:
-                theta_rad_2 = np.arcsin(sin_theta_2)
-                dist_X2_m = dist_D * np.tan(theta_rad_2)
-                dist_X2_cm = dist_X2_m * 100
-                ax2.plot(dist_X2_cm, 0, 'ro', markersize=5, label="Máximo 2.ª Ordem", alpha=0.5)
-                ax2.plot(-dist_X2_cm, 0, 'ro', markersize=5, alpha=0.5)
-
-            ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
-            ax2.set_ylim(-1, 1)
-            ax2.set_xlabel("Distância X no alvo (cm)")
-            ax2.set_yticks([])
-            ax2.set_title("Padrão de Difração no Alvo")
-            ax2.legend()
-            ax2.grid(True, axis='x', linestyle='--')
-            
-            # Cor do laser (simplificado)
-            cor_laser = '#FF0000' if wav_nm > 600 else ('#00FF00' if wav_nm > 500 else '#0000FF')
             
             # Mudar a cor dos pontos consoante o lambda aproximado
             for collection in ax2.collections:
