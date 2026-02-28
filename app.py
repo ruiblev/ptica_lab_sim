@@ -37,19 +37,18 @@ with tab1:
         st.write("**Ângulo de incidência (mova a barra debaixo):**")
         angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0, label_visibility="collapsed")
         
-        # Ocultar TODOS os números em sliders (o próprio valor do slider e max/min) agressivamente
+        # Ocultar TODOS os números em sliders APENAS no primeiro Módulo (Tab 1)
         st.markdown(
             """
             <style>
-                /* Ocultar os números Min e Max laterais e a flag do número selecionado */
-                [data-testid="stTickBar"] {display: none !important;}
-                [data-testid="stSliderValue"] {display: none !important;}
-                .st-bd {display: none !important;}
-                div[data-testid="stSlider"] > div > div > div > div[role="slider"] {
-                   /* Ocultar o texto literal injetado dentro da tag se existir nalguma versao */
+                /* Ocultar os números Min e Max laterais e a flag do número selecionado apenas na Tab 1 */
+                div[role="tabpanel"]:nth-of-type(1) [data-testid="stTickBar"] {display: none !important;}
+                div[role="tabpanel"]:nth-of-type(1) [data-testid="stSliderValue"] {display: none !important;}
+                div[role="tabpanel"]:nth-of-type(1) .st-bd {display: none !important;}
+                div[role="tabpanel"]:nth-of-type(1) div[data-testid="stSlider"] > div > div > div > div[role="slider"] {
                    color: transparent !important;
                 }
-                div[data-testid="stSlider"] div[data-testid="stMarkdownContainer"] {
+                div[role="tabpanel"]:nth-of-type(1) div[data-testid="stSlider"] div[data-testid="stMarkdownContainer"] {
                    display: none !important;
                 }
             </style>
