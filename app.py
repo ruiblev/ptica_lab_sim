@@ -345,6 +345,30 @@ with tab2:
         if sin_theta <= 1:
             fig2, ax2 = plt.subplots(figsize=(8, 4))
             
+            # Ponto central intenso
+            ax2.plot(0, 0, 'ro', markersize=12, label="Máximo Central", alpha=0.9)
+            
+            # Máximos de 1.ª Ordem
+            ax2.plot(dist_X_cm, 0, 'ro', markersize=8, label="Máximo 1.ª Ordem", alpha=0.7)
+            ax2.plot(-dist_X_cm, 0, 'ro', markersize=8, alpha=0.7)
+            
+            # Máximos de 2.ª Ordem (se existir)
+            sin_theta_2 = 2 * wav_m / d_m
+            if sin_theta_2 <= 1:
+                theta_rad_2 = np.arcsin(sin_theta_2)
+                dist_X2_m = dist_D * np.tan(theta_rad_2)
+                dist_X2_cm = dist_X2_m * 100
+                ax2.plot(dist_X2_cm, 0, 'ro', markersize=5, label="Máximo 2.ª Ordem", alpha=0.5)
+                ax2.plot(-dist_X2_cm, 0, 'ro', markersize=5, alpha=0.5)
+
+            ax2.set_xlim(-min(30, dist_X_cm*3), min(30, dist_X_cm*3))
+            ax2.set_ylim(-1, 1)
+            ax2.set_xlabel("Distância X no alvo (cm)")
+            ax2.set_yticks([])
+            ax2.set_title("Padrão de Difração no Alvo")
+            ax2.legend()
+            ax2.grid(True, axis='x', linestyle='--')
+            
             # Mudar a cor dos pontos consoante o lambda aproximado
             for collection in ax2.collections:
               pass # (Isto é opcional e apenas estético)
