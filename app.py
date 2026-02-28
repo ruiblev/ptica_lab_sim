@@ -34,23 +34,25 @@ with tab1:
         n1 = meios[meio1_nome]
         n2 = meios[meio2_nome]
         
+        # Ocultar o número nativamente usando o formato (format=" ") para não poluir a Tab 2 com CSS global
         st.write("**Ângulo de incidência (mova a barra debaixo):**")
-        angle_i_deg = st.slider("Ângulo de incidência ($\\alpha_i$ em graus)", min_value=0.0, max_value=90.0, value=30.0, step=1.0, label_visibility="collapsed")
+        angle_i_deg = st.slider(
+            "Ângulo de incidência ($\\alpha_i$ em graus)", 
+            min_value=0.0, 
+            max_value=90.0, 
+            value=30.0, 
+            step=1.0, 
+            label_visibility="collapsed",
+            format=" "
+        )
         
-        # Ocultar TODOS os números em sliders APENAS no primeiro Módulo (Tab 1)
+        # Ocultar APENAS o balão/min/max deste slider específico usando CSS sem estragar o Tab 2
+        # Como o format=" " já retira o valor, apenas precisamos de esconder o min/max e o balão de cima.
         st.markdown(
             """
             <style>
-                /* Ocultar os números Min e Max laterais e a flag do número selecionado apenas na Tab 1 */
-                div[role="tabpanel"]:nth-of-type(1) [data-testid="stTickBar"] {display: none !important;}
-                div[role="tabpanel"]:nth-of-type(1) [data-testid="stSliderValue"] {display: none !important;}
-                div[role="tabpanel"]:nth-of-type(1) .st-bd {display: none !important;}
-                div[role="tabpanel"]:nth-of-type(1) div[data-testid="stSlider"] > div > div > div > div[role="slider"] {
-                   color: transparent !important;
-                }
-                div[role="tabpanel"]:nth-of-type(1) div[data-testid="stSlider"] div[data-testid="stMarkdownContainer"] {
-                   display: none !important;
-                }
+                /* Ocultar os números Min e Max laterais do slider do ângulo */
+                div[data-testid="stSliderTickBar"] {display: none !important;}
             </style>
             """,
             unsafe_allow_html=True
