@@ -1,6 +1,8 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(page_title="Simulador Ótica AL", layout="wide")
 
@@ -9,8 +11,87 @@ st.markdown("""
 Este simulador permite investigar experimentalmente os fenómenos de **reflexão, refração, reflexão total** e **difração da luz**, de acordo com as Aprendizagens Essenciais de Física e Química A (11.º Ano).
 """)
 
-# Abas para separar as duas partes da AL
-tab1, tab2 = st.tabs(["Parte I: Reflexão, Refração e Reflexão Total da Luz", "Parte II: Difração da Luz"])
+import unicodedata
+import re
+
+# --- Motor de Avaliação Melhorado ---
+def normalizar_texto(texto):
+    """Remove acentos e normaliza o texto para melhor comparação."""
+    texto = texto.lower().strip()
+    # Remove acentos (e.g., 'refração' -> 'refracao')
+    texto = ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
+    # Remove pontuação excessiva
+    texto = re.sub(r'[^a-z0-9\s=*/]', ' ', texto)
+    return texto
+
+def avaliar_resposta(user_text, reference_texts, keywords=None):
+    """
+    Motor híbrido: combina TF-IDF + verificação de palavras-chave obrigatórias.
+    keywords: lista de listas de sinónimos aceitáveis (ex: [['velocidade', 'vel'], ['vacuo', 'vacuu']])
+    """
+    if not user_text or not user_text.strip():
+        return 0, "Por favor, escreva uma resposta!"
+    
+    user_norm = normalizar_texto(user_text)
+    ref_norm  = [normalizar_texto(r) for r in reference_texts]
+    
+    # --- 1. Similaridade TF-IDF ---
+    all_texts = [user_norm] + ref_norm
+    vectorizer = TfidfVectorizer(
+        ngram_range=(1, 2),   # bigramas para melhor contexto
+        sublinear_tf=True,    # suavização TF para textos curtos
+        min_df=1
+    ).fit_transform(all_texts)
+    vectors = vectorizer.toarray()
+    similarities = cosine_similarity(vectors[0:1], vectors[1:])
+    tfidf_score = float(np.max(similarities))
+    
+    # --- 2. Score de Palavras-Chave ---
+    keyword_score = 1.0
+    missing_kws = []
+    if keywords:
+        found = 0
+        for kw_group in keywords:
+            kw_norm = [normalizar_texto(k) for k in kw_group]
+            if any(kw in user_norm for kw in kw_norm):
+                found += 1
+            else:
+                missing_kws.append(kw_group[0])  # nome legível do grupo
+        keyword_score = found / len(keywords)
+    
+    # --- 3. Score final ponderado (60% TF-IDF, 40% keywords) ---
+    if keywords:
+        final_score = 0.6 * tfidf_score + 0.4 * keyword_score
+    else:
+        final_score = tfidf_score
+    
+    # --- 4. Feedback detalhado ---
+    if final_score > 0.70:
+        msg = "✅ **Muito boa resposta!** Os conceitos científicos essenciais estão presentes e corretos."
+    elif final_score > 0.40:
+        if missing_kws:
+            kw_list = ", ".join(f'`{k}`' for k in missing_kws[:3])
+            msg = f"⚠️ **Resposta parcial.** Reveja e inclua os seguintes termos: {kw_list}."
+        else:
+            msg = "⚠️ **Resposta parcial.** Está no bom caminho, mas tente ser mais completo e preciso."
+    else:
+        if missing_kws:
+            kw_list = ", ".join(f'`{k}`' for k in missing_kws[:4])
+            msg = f"❌ **Resposta insuficiente.** Parece que faltam conceitos fundamentais como: {kw_list}."
+        else:
+            msg = "❌ **Resposta insuficiente.** Releia os conceitos teóricos e tente de novo."
+    
+    return final_score, msg
+
+# Abas para separar as duas partes da AL e Questionário
+tab1, tab2, tab3 = st.tabs([
+    "Parte I: Reflexão, Refração e Reflexão Total", 
+    "Parte II: Difração da Luz",
+    "Avaliação & Questões"
+])
 
 with tab1:
     st.header("Reflexão e Refração da Luz")
@@ -257,7 +338,15 @@ with tab2:
     
     with col3:
         st.subheader("Parâmetros do Laser e Rede")
-        wav_nm = st.slider("Comprimento de onda do Laser ($\\lambda$ em nm)", min_value=380, max_value=750, value=633, step=1)
+        cores_laser = {
+            "Vermelho": 650,
+            "Amarelo": 590,
+            "Verde": 532,
+            "Azul": 450,
+            "Violeta": 400
+        }
+        cor_selecionada = st.selectbox("Cor do Laser", options=list(cores_laser.keys()), index=0)
+        wav_nm = cores_laser[cor_selecionada]
         wav_m = wav_nm * 1e-9  # metros
         
         linhas_mm = st.slider("Constante da rede (linhas / mm)", min_value=10, max_value=600, value=300, step=10)
@@ -288,9 +377,11 @@ with tab2:
             # Correntes aproximadas para o feixe laser
             if wav_nm > 600:
                 cor_laser = '#FF0000' # Vermelhos
+            elif wav_nm >= 580:
+                cor_laser = '#FFD700' # Amarelos (Gold)
             elif wav_nm > 500:
                 cor_laser = '#00FF00' # Verdes
-            elif wav_nm > 450:
+            elif wav_nm >= 450:
                 cor_laser = '#0088FF' # Azuis claros
             else:
                 cor_laser = '#4400FF' # Violetas
@@ -563,3 +654,128 @@ with tab2:
                 st.warning("Não foi possível realizar o ajuste linear. Verifique os valores inseridos.")
         else:
             st.info("Insira pelo menos 2 pontos (D > 0 e X > 0) na tabela para gerar o gráfico e o ajuste linear.")
+
+with tab3:
+    st.header("Questionário e Avaliação")
+    st.markdown("""
+    Responda às seguintes questões. O simulador analisa a qualidade das respostas com recurso a **Inteligência Artificial**, 
+    verificando a presença de conceitos-chave e a proximidade com respostas de referência.
+    """)
+    
+    # --- Questões Pré-Laboratoriais ---
+    st.subheader("📚 I. Questões Pré-Laboratoriais")
+    
+    with st.expander("🔵 Pergunta 1: O que é o índice de refração de um meio?", expanded=True):
+        st.caption("Dica: pense na relação entre a velocidade da luz e o meio de propagação.")
+        resp1 = st.text_area("A sua resposta:", key="q1_pre", height=100,
+                             placeholder="O índice de refração ...")
+        if st.button("Submeter Resposta 1", type="primary"):
+            modelos1 = [
+                "O índice de refração é a razão entre a velocidade da luz no vácuo e a velocidade da luz no meio.",
+                "Representa a dificuldade da luz se propagar num meio em relação ao vácuo. n = c dividido por v.",
+                "O índice de refração mede quanto a velocidade da luz diminui ao entrar num meio óptico. Quanto maior o n, mais lenta a luz.",
+                "n igual a c sobre v onde c e a velocidade da luz no vacuo e v a velocidade no meio.",
+                "razao velocidade luz vacuo velocidade meio indice refracao formula n c v",
+            ]
+            kws1 = [
+                ["indice", "índice", "n "],
+                ["velocidade", "vel "],
+                ["vacuo", "vácuo", "vacio"],
+                ["razao", "razão", "quociente", "c/v", "c / v"],
+            ]
+            score1, feedback1 = avaliar_resposta(resp1, modelos1, kws1)
+            if score1 > 0.70:
+                st.success(feedback1)
+            elif score1 > 0.40:
+                st.warning(feedback1)
+            else:
+                st.error(feedback1)
+            st.progress(min(score1, 1.0), text=f"Pontuação: {score1*100:.0f}%")
+            with st.expander("Ver resposta modelo", expanded=False):
+                st.info("O **índice de refração** ($n$) de um meio é definido como a razão entre a velocidade da luz no vácuo ($c$) e a velocidade da luz nesse meio ($v$): $n = c / v$. Um valor maior de $n$ indica que a luz se propaga mais lentamente.")
+
+    with st.expander("🔵 Pergunta 2: Enuncie a Lei de Snell-Descartes para a refração."):
+        st.caption("Dica: envolve os ângulos de incidência e de refração e os índices dos dois meios.")
+        resp2 = st.text_area("A sua resposta:", key="q2_pre", height=100,
+                             placeholder="n1 sen(theta1) = ...")
+        if st.button("Submeter Resposta 2", type="primary"):
+            modelos2 = [
+                "n1 vezes seno de theta1 é igual a n2 vezes seno de theta2. Os índices de refração pelo seno dos ângulos.",
+                "O produto do índice de refração pelo seno do ângulo de incidência é igual ao produto do índice de refração do segundo meio pelo seno do ângulo de refração.",
+                "n1 sen theta1 n2 sen theta2. A lei relaciona os angulos de incidencia e refracao com os indices n1 e n2.",
+                "n1 sin theta1 n2 sin theta2 lei snell refração angulos indices",
+            ]
+            kws2 = [
+                ["n1", "indice 1", "indice de incidencia"],
+                ["n2", "indice 2", "indice de refracao"],
+                ["seno", "sen", "sin", "sin("],
+                ["angulo", "ângulo", "theta"],
+            ]
+            score2, feedback2 = avaliar_resposta(resp2, modelos2, kws2)
+            if score2 > 0.70:
+                st.success(feedback2)
+            elif score2 > 0.40:
+                st.warning(feedback2)
+            else:
+                st.error(feedback2)
+            st.progress(min(score2, 1.0), text=f"Pontuação: {score2*100:.0f}%")
+            with st.expander("Ver resposta modelo", expanded=False):
+                st.info(r"A Lei de Snell-Descartes establece que: $n_1 \sin\theta_1 = n_2 \sin\theta_2$, onde $n_1$ e $n_2$ são os índices de refração dos dois meios e $\theta_1$, $\theta_2$ os ângulos de incidência e refração, medidos em relação à normal.")
+
+    # --- Questões Pós-Laboratoriais ---
+    st.write("---")
+    st.subheader("📊 II. Questões Pós-Laboratoriais")
+    
+    with st.expander("💫 Pergunta 3: O que acontece ao ângulo de difração se aumentarmos o comprimento de onda?"):
+        st.caption("Dica: relacione $\\lambda$ com $\\sin\\theta$ através da equação da rede de difração.")
+        resp3 = st.text_area("A sua resposta:", key="q3_pos", height=100,
+                             placeholder="Se o comprimento de onda aumenta, o ângulo ...")
+        if st.button("Submeter Resposta 3", type="primary"):
+            modelos3 = [
+                "Se o comprimento de onda aumenta, o ângulo de difração também aumenta. O seno do ângulo é proporcional ao lambda.",
+                "Maior comprimento de onda resulta em maior desvio dos máximos. A luz vermelha difrata mais do que a azul.",
+                "A equação n lambda d sin theta mostra que o angulo aumenta com o aumento do comprimento de onda.",
+                "o angulo de difracao aumenta proporcional comprimento onda lambda maior seno theta",
+            ]
+            kws3 = [
+                ["aumenta", "maior", "proporcional", "cresce"],
+                ["comprimento de onda", "lambda", "λ"],
+                ["angulo", "ângulo", "theta", "desvio"],
+            ]
+            score3, feedback3 = avaliar_resposta(resp3, modelos3, kws3)
+            if score3 > 0.70:
+                st.success(feedback3)
+            elif score3 > 0.40:
+                st.warning(feedback3)
+            else:
+                st.error(feedback3)
+            st.progress(min(score3, 1.0), text=f"Pontuação: {score3*100:.0f}%")
+            with st.expander("Ver resposta modelo", expanded=False):
+                st.info(r"Da equação $n\lambda = d\sin\theta$, conclui-se que $\sin\theta$ é diretamente proporcional a $\lambda$. Logo, ao **aumentar o comprimento de onda**, **o ângulo de difração também aumenta** — por isso a luz vermelha se desvia mais do que a azul.")
+
+    with st.expander("💫 Pergunta 4: Qual a vantagem de usar uma rede de difração com muitas fendas?"):
+        st.caption("Dica: pense na precisão da medida e na nitidez dos máximos.")
+        resp4 = st.text_area("A sua resposta:", key="q4_pos", height=100,
+                             placeholder="Uma rede com mais fendas produz máximos...")
+        if st.button("Submeter Resposta 4", type="primary"):
+            modelos4 = [
+                "Quanto mais fendas tiver a rede, mais nítidos e intensos são os máximos de difração. Isso permite medições mais precisas.",
+                "Uma rede com muitas fendas produz picos mais estreitos e brilhantes, o que facilita a determinação da posição exata dos máximos.",
+                "muitas fendas producam maximos mais nitidos estreito precisao medicao comprimento onda",
+            ]
+            kws4 = [
+                ["nitidos", "nítidos", "nitidez", "estreitos", "definidos"],
+                ["precisao", "precisão", "precisa", "exato"],
+                ["intensidade", "intenso", "brilhante", "mais luz"],
+            ]
+            score4, feedback4 = avaliar_resposta(resp4, modelos4, kws4)
+            if score4 > 0.70:
+                st.success(feedback4)
+            elif score4 > 0.40:
+                st.warning(feedback4)
+            else:
+                st.error(feedback4)
+            st.progress(min(score4, 1.0), text=f"Pontuação: {score4*100:.0f}%")
+            with st.expander("Ver resposta modelo", expanded=False):
+                st.info("Uma rede com muitas fendas produz **máximos muito mais nítidos e estreitos**, o que aumenta a **precisão** na determinação dos ângulos de difração e, consequentemente, do comprimento de onda da luz utilizada.")
+
